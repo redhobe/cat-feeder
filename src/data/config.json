@@ -1,0 +1,13 @@
+{
+  "manualPortions": "4",
+  "schedule": [
+    {
+      "time": "08:00",
+      "portions": "4"
+    },
+    {
+      "time": "18:26",
+      "portions": "5"
+    }
+  ]
+}

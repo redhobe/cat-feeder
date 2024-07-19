@@ -3,7 +3,7 @@
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
 #include <FTPServer.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJSON.h>
 #include <Wire.h>
 #include <RtcPCF8563.h>
 #include "pitches.h"
@@ -25,37 +25,52 @@ AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
 // GPIO
-uint8_t ledIO = 5;
-uint8_t motorClockwiseIO = 18;
-uint8_t motorAntiClockwiseIO = 17;
-uint8_t sleepIO = 19;
-uint8_t sensorsIO = 33;
-uint8_t motorSensorIO = 27;
-uint8_t feedSensorIO = 14;
-uint8_t speakerIO = 16;
-uint8_t sdaIO = 15;
-uint8_t sclIO = 4;
+const uint8_t ledIO = 5;
+const uint8_t motorClockwiseIO = 18;
+const uint8_t motorAntiClockwiseIO = 17;
+const uint8_t sleepIO = 19;
+const uint8_t sensorsIO = 33;
+const uint8_t motorSensorIO = 27;
+const uint8_t feedSensorIO = 14;
+const uint8_t speakerIO = 16;
+const uint8_t sdaIO = 15;
+const uint8_t sclIO = 4;
+const uint8_t feedButtonIO = 34;
+const uint8_t pairButtonIO = 0;
 
+uint8_t feedButtonState = HIGH;
 uint8_t feedSensorState = HIGH;
-uint8_t motorSensorState = LOW;
+uint8_t motorSensorPrevState = LOW;
+
 bool isEngineOn = false;
 bool isFoodPouredOut = false;
+uint8_t motorRotationCount = 0;
+uint8_t maxMotorRotations = 1;
+uint8_t defaultPortionsCount = 1;
 
-// Timer variables
 unsigned long lastTime = 0;
 unsigned long timerDelaySchedule = 60000;
+
+JsonDocument config;
+JsonArray schedule;
+
+void logger(const char *message)
+{
+  events.send(message, NULL, millis());
+  Serial.print(message);
+}
 
 void initWiFi()
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
+  logger("Connecting to WiFi ..");
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print('.');
     delay(1000);
   }
-  Serial.println(WiFi.localIP());
+  logger(WiFi.localIP().toString().c_str());
 }
 
 void printDateTime(const RtcDateTime &dt)
@@ -72,6 +87,18 @@ void printDateTime(const RtcDateTime &dt)
              dt.Minute(),
              dt.Second());
   events.send(datestring, NULL, millis());
+}
+
+char *printTime(const RtcDateTime &dt)
+{
+  static char datestring[6]; // Use static to avoid memory allocation on each call
+
+  snprintf_P(datestring,
+             countof(datestring),
+             PSTR("%02u:%02u"),
+             dt.Hour(),
+             dt.Minute());
+  return datestring; // Return the pointer to the formatted string
 }
 
 bool wasError(const char *errorTopic = "")
@@ -111,12 +138,13 @@ bool wasError(const char *errorTopic = "")
   return false;
 }
 
-void engineOn()
+void engineOn(uint8_t rotations = defaultPortionsCount)
 {
   isEngineOn = true;
-  motorSensorState = HIGH;
+  motorSensorPrevState = LOW;
   isFoodPouredOut = false;
-
+  motorRotationCount = 0;
+  maxMotorRotations = defaultPortionsCount;
   digitalWrite(sensorsIO, HIGH);
   digitalWrite(motorClockwiseIO, HIGH);
   digitalWrite(sleepIO, HIGH);
@@ -125,9 +153,8 @@ void engineOn()
 void engineOff()
 {
   isEngineOn = false;
-  motorSensorState = HIGH;
-
   digitalWrite(sensorsIO, LOW);
+  digitalWrite(motorAntiClockwiseIO, LOW);
   digitalWrite(motorClockwiseIO, LOW);
   digitalWrite(sleepIO, LOW);
 }
@@ -158,6 +185,39 @@ ArRequestHandlerFunction ledRequestHandler = [](AsyncWebServerRequest *request)
   request->send(200);
 };
 
+bool loadConfig()
+{
+  File dataFile = LittleFS.open("/config.json", "r");
+  if (!dataFile)
+  {
+    logger("Failed to open data file");
+    return false;
+  }
+
+  size_t size = dataFile.size();
+  if (size > 1024)
+  {
+    logger("Data file size is too large");
+    return false;
+  }
+
+  std::unique_ptr<char[]> buf(new char[size]);
+
+  dataFile.readBytes(buf.get(), size);
+
+  auto error = deserializeJson(config, buf.get());
+  if (error)
+  {
+    logger("Failed to parse config file");
+    return false;
+  }
+
+  defaultPortionsCount = config["manualPortions"].as<uint8_t>();
+  schedule = config["schedule"].as<JsonArray>();
+
+  return true;
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -169,6 +229,7 @@ void setup()
   pinMode(sensorsIO, OUTPUT);
   pinMode(motorSensorIO, INPUT);
   pinMode(feedSensorIO, INPUT);
+  pinMode(feedButtonIO, INPUT);
 
   initWiFi();
   Wire.begin(sdaIO, sclIO);
@@ -225,27 +286,38 @@ void setup()
     if (client->lastId()) {
       Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
     }
-    
     client->send("hello!", NULL, millis(), 10000); });
 
   server.addHandler(&events);
   server.begin();
   OTABegin();
   ftpSrv.begin(F("ftp"), F("ftp"));
+  loadConfig();
+  digitalWrite(ledIO, HIGH);
 }
 
 void checkFoodPouredOut()
 {
   if (!isFoodPouredOut)
   {
-    isFoodPouredOut = !!digitalRead(feedSensorIO);
+    isFoodPouredOut = digitalRead(feedSensorIO) == HIGH;
   }
 }
 
 void checkMotorSensor()
 {
-  if (!digitalRead(motorSensorIO))
+  const int sensorState = digitalRead(motorSensorIO);
+  if (sensorState == LOW && motorSensorPrevState == HIGH)
   {
+    motorRotationCount++;
+  }
+
+  motorSensorPrevState = sensorState;
+
+  if (motorRotationCount >= maxMotorRotations)
+  {
+    // Задержка, чтобы окошко для датчика в задающем диске успело сдвинуться перед выключением моторчика
+    delay(50);
     engineOff();
     if (!isFoodPouredOut)
     {
@@ -260,13 +332,30 @@ void loop()
   {
     RtcDateTime now = Rtc.GetDateTime();
     printDateTime(now);
+
+    for (JsonVariant scheduleItem : schedule)
+    {
+      char *nowTime = printTime(now);
+
+      if (nowTime == scheduleItem["time"])
+      {
+        engineOn(scheduleItem["portions"].as<uint8_t>());
+      }
+    }
     lastTime = millis();
+  }
+
+  feedButtonState = digitalRead(feedButtonIO);
+
+  if (feedButtonState == LOW)
+  {
+    engineOn();
   }
 
   if (isEngineOn)
   {
-    checkFoodPouredOut();
     checkMotorSensor();
+    checkFoodPouredOut();
   }
 
   ftpSrv.handleFTP();
