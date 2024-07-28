@@ -185,6 +185,20 @@ ArRequestHandlerFunction ledRequestHandler = [](AsyncWebServerRequest *request)
   request->send(200);
 };
 
+ArRequestHandlerFunction getConfigRequestHandler = [](AsyncWebServerRequest *request)
+{
+  String output;
+  serializeJson(config, output);
+  request->send(200, "application/json", output);
+};
+
+ArRequestHandlerFunction putConfigRequestHandler = [](AsyncWebServerRequest *request)
+{
+  String output;
+  serializeJson(config, output);
+  request->send(200, "application/json", output);
+};
+
 bool loadConfig()
 {
   File dataFile = LittleFS.open("/config.json", "r");
@@ -280,6 +294,8 @@ void setup()
   server.serveStatic("/", LittleFS, "/");
   server.on("/led", HTTP_GET, ledRequestHandler);
   server.on("/engine", HTTP_GET, engineRequestHandler);
+  server.on("/config", HTTP_GET, getConfigRequestHandler);
+  server.on("/config", HTTP_PUT, putConfigRequestHandler);
 
   events.onConnect([](AsyncEventSourceClient *client)
                    {

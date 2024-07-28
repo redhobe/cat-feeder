@@ -14,17 +14,30 @@
 //   xhr.open("GET", "/readings", true);
 //   xhr.send();
 // }
-function led(state) {
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", `/led?state=${state}`, true);
-  xhr.send();
+
+async function led(state) {
+  await fetch(`/led?state=${state}`);
 }
 
-function engine(state) {
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", `/engine?state=${state}`, true);
-  xhr.send();
+async function engine(state) {
+  await fetch(`/engine?state=${state}`);
 }
+
+async function getConfig() {
+  const response = await fetch(`/config`);
+
+  if (response.ok) {
+    const json = await response.json();
+    return json;
+  } else {
+    // alert("Ошибка при получении данных конфигурации: код ошибки - " + response.status);
+  }
+}
+
+window.onload = async () => {
+  const config = await getConfig();
+  console.log(config)
+};
 
 document.querySelector('.btn-on').addEventListener('click', () => led('on'));
 document.querySelector('.btn-off').addEventListener('click', () => led('off'));
@@ -66,3 +79,4 @@ if (!!window.EventSource) {
     gaugeHum.value = myObj.humidity;
   }, false);
 }
+
