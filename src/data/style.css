@@ -12,31 +12,19 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --success-default: #22c55e;
-}
-
-/* Chrome, Safari, Edge, Opera */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
+  --font-family: "Golos Text", sans-serif;
 }
 
 p {
   margin: 0;
   width: 100%;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
 * {
   box-sizing: border-box;
-  font-family: "Golos Text", sans-serif;
-
+  font-family: var(--font-family);
 }
 
 body {
@@ -148,16 +136,6 @@ button {
 
 button:active {
   filter: brightness(95%);
-}
-
-input {
-  padding: 10px 12px;
-  min-width: 60px;
-  font-size: 14px;
-  outline: none;
-  border-radius: var(--radius-md);
-
-  border: 1px solid var(--border-light)
 }
 
 .container {
@@ -344,4 +322,102 @@ i svg path {
   opacity: 1;
   transition: all 0.2s ease-out;
   left: 10px;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-item label {
+  cursor: text;
+  z-index: 2;
+  font-size: 12px;
+  font-weight: regular;
+  background: #fff;
+  padding: 4px 0;
+  color: #999;
+  transition: all .3s ease
+}
+
+.form-item input:focus+label,
+.form-item input:valid+label {
+  font-size: 11px;
+  top: -5px
+}
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+input {
+  padding: 10px 12px;
+  min-width: 60px;
+  width: 100%;
+  height: 40px;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-surface-1);
+  color: var(--content-default);
+  -webkit-text-fill-color: var(--content-default);
+  transition: all 0.2s ease-out;
+}
+
+input[readonly],
+input[disabled] {
+  border: none;
+  background: transparent;
+  color: var(--content-default);
+  -webkit-text-fill-color: var(--content-default);
+  opacity: 1;
+}
+
+input::placeholder {
+  color: var(--neutral-muted);
+  -webkit-text-fill-color: var(--neutral-muted);
+}
+
+
+input:focus {
+  border-color: var(--primary-default)
+}
+
+.input-shaking {
+  animation: shake 0.2s ease-in-out 0s 2;
+  border-color: red;
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0rem);
+  }
+
+  25% {
+    transform: translateX(0.5rem);
+  }
+
+  75% {
+    transform: translateX(-0.5rem);
+  }
+
+  100% {
+    transform: translateX(0rem);
+  }
 }

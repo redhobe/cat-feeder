@@ -6,8 +6,9 @@
   <meta charset="utf-8">
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
+    content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=0"
   >
+
   <link
     rel="
     icon"
@@ -28,6 +29,10 @@
   <script
     defer
     src="script.js"
+  ></script>
+  <script
+    defer
+    src="./web-components/feeder-input.js"
   ></script>
   <link
     rel="preconnect"
@@ -56,15 +61,19 @@
     </div>
     <div class="main-container__right">
       <h1>PETKIT FRESH ELEMENT SOLO</h1>
-      <p>Количество порций</p>
-      <input
-        type="number"
-        pattern="\d*"
-        min="1"
-        max="10"
-        placeholder="Введите кол-во"
-      >
-      <button>Покормить</button>
+      <div class="feature-list">
+        <p>Количество порций</p>
+        <feeder-input
+          type="number"
+          pattern="\d*"
+          min="1"
+          max="10"
+          placeholder="Введите кол-во"
+          value="3"
+          style="width: 100%;"
+        ></feeder-input>
+        <button>Покормить</button>
+      </div>
     </div>
   </div>
   <div class="container">
@@ -77,10 +86,6 @@
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td>18:26</td>
-          <td>Успешно</td>
-        </tr>
         <tr>
           <td>18:26</td>
           <td>Успешно</td>
@@ -131,39 +136,95 @@
       </thead>
       <tbody>
         <tr>
-          <td>18:26</td>
-          <td>5</td>
-          <td><button class="button--error  button--round "></button></td>
+          <td>
+            <feeder-input
+              type="time"
+              value="18:26"
+              required
+            />
+          </td>
+          <td>
+            <feeder-input
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              value="5"
+              required
+              pattern="\d*"
+            />
+          </td>
+          <td><button class="button--error button--round"></button></td>
         </tr>
         <tr>
-          <td>18:26</td>
-          <td>5</td>
-          <td><button class="button--error  button--round "></button></td>
+          <td>
+            <feeder-input
+              type="time"
+              value="18:26"
+              required
+            />
+          </td>
+          <td>
+            <feeder-input
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              value="5"
+              required
+              pattern="\d*"
+            />
+          </td>
+          <td><button class="button--error button--round"></button></td>
         </tr>
         <tr>
-          <td>18:26</td>
-          <td>5</td>
-          <td><button class="button--error  button--round "></button></td>
+          <td>
+            <feeder-input
+              type="time"
+              value="18:26"
+              required
+            />
+          </td>
+          <td>
+            <feeder-input
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              value="5"
+              required
+              pattern="\d*"
+            />
+          </td>
+          <td><button class="button--error button--round"></button></td>
         </tr>
       </tbody>
     </table>
-    <p style="font-size: 16px;">Добавить запись</p>
-    <div style="display:flex;flex-wrap: nowrap; gap:8px;">
-
-      <input
-        type="time"
-        id="appt"
-        value="13:00"
-        name="appt"
-        required
-        placeholder="--:--"
-      />
-      <input
-        style="width: 160px;"
-        type="number"
-        pattern="\d*"
-        placeholder="Кол-во порций"
-      />
+    <p style="font-size: 14px;">Добавить запись</p>
+    <div style="display:flex;flex-wrap: nowrap; gap:16px; align-items: end;">
+      <div class="form-item">
+        <label for="time">Время</label>
+        <feeder-input
+          type="time"
+          id="time"
+          value="13:00"
+          name="time"
+          required
+          placeholder="--:--"
+        />
+      </div>
+      <div class="form-item">
+        <label for="portions">Кол-во порций</label>
+        <feeder-input
+          id="portions"
+          style="width: 160px;"
+          type="number"
+          pattern="\d*"
+          min="1"
+          max="10"
+          value="1"
+        />
+      </div>
       <button class="button--round button--success"></button>
     </div>
     <button class="button--primary">Сохранить расписание</button>
