@@ -158,6 +158,17 @@ void engineOff()
   digitalWrite(motorClockwiseIO, LOW);
   digitalWrite(sleepIO, LOW);
 }
+void notFound(AsyncWebServerRequest *request)
+{
+  if (request->method() == HTTP_OPTIONS)
+  {
+    request->send(200);
+  }
+  else
+  {
+    request->send(404, "application/json", "{\"message\":\"Not found\"}");
+  }
+}
 
 ArRequestHandlerFunction engineRequestHandler = [](AsyncWebServerRequest *request)
 {
@@ -194,10 +205,22 @@ ArRequestHandlerFunction getConfigRequestHandler = [](AsyncWebServerRequest *req
 
 ArRequestHandlerFunction putConfigRequestHandler = [](AsyncWebServerRequest *request)
 {
-  String output;
-  serializeJson(config, output);
+  AsyncWebParameter *state = request->getParam("body");
+  serializeJson(state);
   request->send(200, "application/json", output);
 };
+
+bool saveConfig(const JsonVariantConst json)
+{
+  File dataFile = LittleFS.open("/config.json", "r");
+  if (!dataFile)
+  {
+    logger("Failed to open data file");
+    return false;
+  }
+  serializeJson(json, dataFile);
+  return true;
+}
 
 bool loadConfig()
 {
@@ -296,7 +319,7 @@ void setup()
   server.on("/engine", HTTP_GET, engineRequestHandler);
   server.on("/config", HTTP_GET, getConfigRequestHandler);
   server.on("/config", HTTP_PUT, putConfigRequestHandler);
-
+  server.onNotFound(notFound);
   events.onConnect([](AsyncEventSourceClient *client)
                    {
     if (client->lastId()) {
@@ -305,6 +328,10 @@ void setup()
     client->send("hello!", NULL, millis(), 10000); });
 
   server.addHandler(&events);
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Credentials", "true");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+
   server.begin();
   OTABegin();
   ftpSrv.begin(F("ftp"), F("ftp"));

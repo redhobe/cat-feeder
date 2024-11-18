@@ -28,6 +28,7 @@
   >
   <script
     defer
+    type="module"
     src="script.js"
   ></script>
   <script
@@ -134,70 +135,7 @@
           <th>Порции</th>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td>
-            <feeder-input
-              type="time"
-              value="18:26"
-              required
-            />
-          </td>
-          <td>
-            <feeder-input
-              type="number"
-              min="1"
-              max="10"
-              step="1"
-              value="5"
-              required
-              pattern="\d*"
-            />
-          </td>
-          <td><button class="button--error button--round"></button></td>
-        </tr>
-        <tr>
-          <td>
-            <feeder-input
-              type="time"
-              value="18:26"
-              required
-            />
-          </td>
-          <td>
-            <feeder-input
-              type="number"
-              min="1"
-              max="10"
-              step="1"
-              value="5"
-              required
-              pattern="\d*"
-            />
-          </td>
-          <td><button class="button--error button--round"></button></td>
-        </tr>
-        <tr>
-          <td>
-            <feeder-input
-              type="time"
-              value="18:26"
-              required
-            />
-          </td>
-          <td>
-            <feeder-input
-              type="number"
-              min="1"
-              max="10"
-              step="1"
-              value="5"
-              required
-              pattern="\d*"
-            />
-          </td>
-          <td><button class="button--error button--round"></button></td>
-        </tr>
+      <tbody id="schedule-body">
       </tbody>
     </table>
     <p style="font-size: 14px;">Добавить запись</p>
@@ -225,9 +163,17 @@
           value="1"
         />
       </div>
-      <button class="button--round button--success"></button>
+      <button
+        class="button--round button--success"
+        data-add-schedule-button
+      ></button>
     </div>
-    <button class="button--primary">Сохранить расписание</button>
+    <button
+      class="button--primary"
+      data-save-schedule-button
+    >
+      Сохранить расписание
+    </button>
 
   </div>
   <div class="container">
@@ -286,7 +232,9 @@
         </label>
       </li>
     </ul>
-    <button class="save-button">Сохранить настройки</button>
+    <button class="save-button">
+      Сохранить настройки
+    </button>
   </div>
 </body>
 

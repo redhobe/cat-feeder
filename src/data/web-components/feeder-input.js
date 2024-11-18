@@ -1,28 +1,36 @@
 class FeederInput extends HTMLElement {
+  static formAssociated = true;
+  _internals = this.attachInternals();
+
   html() {
     return `<link rel="stylesheet" href="./web-components/feeder-input.css"></link><input />`
   }
 
   constructor() {
     super();
-    const shadowRoot = this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = this.html();
-    this.input = shadowRoot.querySelector("input");
+    // const shadowRoot = this.attachShadow({ mode: "open" });
+    // this.shadowRoot.innerHTML = this.html();
+    // this.input = shadowRoot.querySelector("input");
     this.type = this.getAttribute('type');
+    this._contents = document.createElement('input');
+    // this._contents = input.cloneNode(true);
 
     this.getAttributeNames().forEach((attr) => {
-      this.input.setAttribute(attr, this.getAttribute(attr));
+      this._contents.setAttribute(attr, this.getAttribute(attr));
     });
   }
 
   connectedCallback() {
+    this.appendChild(this._contents);
+    this.input = this.querySelector('input');
+
     if (this.type === 'number') {
-      this.addEventListener('blur', this.onNumberInputBlur);
-      this.addEventListener('keydown', this.onNumberInputKeyPress);
+      this.input.addEventListener('blur', this.onNumberInputBlur.bind(this));
+      this.input.addEventListener('keydown', this.onNumberInputKeyPress.bind(this));
     }
 
     if (this.type === 'time') {
-      this.addEventListener('blur', this.onTimeInputBlur)
+      this.input.addEventListener('blur', this.onTimeInputBlur.bind(this))
     }
   }
 
@@ -42,16 +50,16 @@ class FeederInput extends HTMLElement {
     return false;
   }
 
-  onNumberInputBlur() {
-    const min = Number(this.input.min);
-    const max = Number(this.input.max);
-    const value = Number(this.input.value);
+  onNumberInputBlur(event) {
+    const min = Number(event.target.min);
+    const max = Number(event.target.max);
+    const value = Number(event.target.value);
 
     if (value < min || value > max) {
-      this.input.value = (value < min ? min : max).toString();
+      event.target.value = (value < min ? min : max).toString();
       this.setShakingAnimation();
     } else {
-      this.input.value = value.toString();
+      event.target.value = value.toString();
     }
   }
 

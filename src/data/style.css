@@ -56,6 +56,10 @@ table {
   /* box-shadow: 8px 40px 96px 0px #123D6524, -8px -6px 80px 0px #FFFFFF2E inset; */
 }
 
+table:not(:has(tbody tr)) {
+  display: none;
+}
+
 th {
   font-weight: 500;
 }
