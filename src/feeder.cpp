@@ -73,6 +73,20 @@ void initWiFi()
   logger(WiFi.localIP().toString().c_str());
 }
 
+void setTimeFromNTP()
+{
+  const int GMT_OFFSET_SEC = 3 * 60 * 60;
+  const int DAYLIGHT_OFFSET_SEC = 0;
+
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, "pool.ntp.org");
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo))
+  {
+    RtcDateTime ntpdt = RtcDateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    Rtc.SetDateTime(ntpdt);
+  }
+}
+
 void printDateTime(const RtcDateTime &dt)
 {
   char datestring[26];
@@ -170,6 +184,14 @@ void notFound(AsyncWebServerRequest *request)
   }
 }
 
+ArRequestHandlerFunction timeRequestHandler = [](AsyncWebServerRequest *request)
+{
+  RtcDateTime now = Rtc.GetDateTime();
+  char *nowTime = printTime(now);
+
+  request->send(200, "text/plain", nowTime);
+};
+
 ArRequestHandlerFunction engineRequestHandler = [](AsyncWebServerRequest *request)
 {
   if (!request->hasParam("state"))
@@ -205,9 +227,9 @@ ArRequestHandlerFunction getConfigRequestHandler = [](AsyncWebServerRequest *req
 
 ArRequestHandlerFunction putConfigRequestHandler = [](AsyncWebServerRequest *request)
 {
-  AsyncWebParameter *state = request->getParam("body");
-  serializeJson(state);
-  request->send(200, "application/json", output);
+  // AsyncWebParameter *state = request->getParam("body");
+  // serializeJson(state);
+  // request->send(200, "application/json", output);
 };
 
 bool saveConfig(const JsonVariantConst json)
@@ -255,6 +277,12 @@ bool loadConfig()
   return true;
 }
 
+ArRequestHandlerFunction reloadConfigRequestHandler = [](AsyncWebServerRequest *request)
+{
+  loadConfig();
+  request->send(200);
+};
+
 void setup()
 {
   Serial.begin(115200);
@@ -275,16 +303,6 @@ void setup()
   bool isFSok = LittleFS.begin();
   Serial.printf_P(PSTR("FS init: %s\n"), isFSok ? PSTR("ok") : PSTR("fail!"));
 
-  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
-  if (!Rtc.IsDateTimeValid())
-  {
-    if (!wasError("setup IsDateTimeValid"))
-    {
-      Serial.println("RTC lost confidence in the DateTime!");
-      Rtc.SetDateTime(compiled);
-    }
-  }
-
   if (!Rtc.GetIsRunning())
   {
     if (!wasError("setup GetIsRunning"))
@@ -294,29 +312,15 @@ void setup()
     }
   }
 
-  RtcDateTime now = Rtc.GetDateTime();
-  if (!wasError("setup GetDateTime"))
-  {
-    if (now < compiled)
-    {
-      Serial.println("RTC is older than compile time, updating DateTime");
-      Rtc.SetDateTime(compiled);
-    }
-    else if (now > compiled)
-    {
-      Serial.println("RTC is newer than compile time, this is expected");
-    }
-    else if (now == compiled)
-    {
-      Serial.println("RTC is the same as compile time, while not expected all is still fine");
-    }
-  }
+  setTimeFromNTP();
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/index.html", "text/html"); });
   server.serveStatic("/", LittleFS, "/");
   server.on("/led", HTTP_GET, ledRequestHandler);
+  server.on("/time", HTTP_GET, timeRequestHandler);
   server.on("/engine", HTTP_GET, engineRequestHandler);
+  server.on("/reload-config", HTTP_GET, reloadConfigRequestHandler);
   server.on("/config", HTTP_GET, getConfigRequestHandler);
   server.on("/config", HTTP_PUT, putConfigRequestHandler);
   server.onNotFound(notFound);
@@ -375,16 +379,21 @@ void loop()
   {
     RtcDateTime now = Rtc.GetDateTime();
     printDateTime(now);
+    char *nowTime = printTime(now);
 
     for (JsonVariant scheduleItem : schedule)
     {
-      char *nowTime = printTime(now);
-
       if (nowTime == scheduleItem["time"])
       {
         engineOn(scheduleItem["portions"].as<uint8_t>());
       }
     }
+
+    if (nowTime == "00:00")
+    {
+      setTimeFromNTP();
+    }
+
     lastTime = millis();
   }
 
