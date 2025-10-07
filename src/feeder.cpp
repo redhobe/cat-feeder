@@ -158,7 +158,7 @@ void engineOn(uint8_t rotations = defaultPortionsCount)
   motorSensorPrevState = LOW;
   isFoodPouredOut = false;
   motorRotationCount = 0;
-  maxMotorRotations = defaultPortionsCount;
+  maxMotorRotations = rotations;
   digitalWrite(sensorsIO, HIGH);
   digitalWrite(motorClockwiseIO, HIGH);
   digitalWrite(sleepIO, HIGH);
@@ -192,16 +192,16 @@ ArRequestHandlerFunction timeRequestHandler = [](AsyncWebServerRequest *request)
   request->send(200, "text/plain", nowTime);
 };
 
-ArRequestHandlerFunction engineRequestHandler = [](AsyncWebServerRequest *request)
+ArRequestHandlerFunction feedRequestHandler = [](AsyncWebServerRequest *request)
 {
-  if (!request->hasParam("state"))
+  if (!request->hasParam("portions"))
   {
     request->send(500);
   }
 
-  AsyncWebParameter *state = request->getParam("state");
+  AsyncWebParameter *state = request->getParam("portions");
 
-  state->value().equals("on") ? engineOn() : engineOff();
+  engineOn(state->value().toInt());
   request->send(200);
 };
 
@@ -225,22 +225,26 @@ ArRequestHandlerFunction getConfigRequestHandler = [](AsyncWebServerRequest *req
   request->send(200, "application/json", output);
 };
 
-ArRequestHandlerFunction putConfigRequestHandler = [](AsyncWebServerRequest *request)
-{
-  // AsyncWebParameter *state = request->getParam("body");
-  // serializeJson(state);
-  // request->send(200, "application/json", output);
-};
-
 bool saveConfig(const JsonVariantConst json)
 {
-  File dataFile = LittleFS.open("/config.json", "r");
+  // Открываем файл для записи
+  File dataFile = LittleFS.open("/config.json", "w");
   if (!dataFile)
   {
-    logger("Failed to open data file");
+    logger("Failed to open data file for writing");
     return false;
   }
-  serializeJson(json, dataFile);
+
+  // Сериализуем JSON в файл
+  if (serializeJson(json, dataFile) == 0)
+  {
+    logger("Failed to serialize JSON to file");
+    dataFile.close();
+    return false;
+  }
+
+  // Закрываем файл
+  dataFile.close();
   return true;
 }
 
@@ -283,6 +287,42 @@ ArRequestHandlerFunction reloadConfigRequestHandler = [](AsyncWebServerRequest *
   request->send(200);
 };
 
+ArRequestHandlerFunction putConfigRequestHandler = [](AsyncWebServerRequest *request)
+{
+  // Проверяем наличие параметра "body"
+  if (request->hasParam("config"))
+  {
+    AsyncWebParameter *state = request->getParam("config");
+    String bodyValue = state->value(); // Получаем значение параметра
+
+    // Создаем JSON-документ
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, bodyValue);
+
+    // Проверяем успешность десериализации
+    if (error)
+    {
+      Serial.print("deserializeJson() failed: ");
+      Serial.println(error.c_str());
+      request->send(400, "text/plain", "Invalid JSON");
+      return;
+    }
+
+    // Преобразуем в JsonVariantConst
+    JsonVariantConst jsonVariant = doc.as<JsonVariantConst>();
+
+    // Передаем JsonVariantConst в функцию saveConfig
+    saveConfig(jsonVariant);
+    loadConfig();
+    // Отправляем успешный ответ
+    request->send(200, "text/plain", "Config saved");
+  }
+  else
+  {
+    request->send(400, "text/plain", "Parameter 'body' not found");
+  }
+};
+
 void setup()
 {
   Serial.begin(115200);
@@ -319,7 +359,7 @@ void setup()
   server.serveStatic("/", LittleFS, "/");
   server.on("/led", HTTP_GET, ledRequestHandler);
   server.on("/time", HTTP_GET, timeRequestHandler);
-  server.on("/engine", HTTP_GET, engineRequestHandler);
+  server.on("/feed", HTTP_GET, feedRequestHandler);
   server.on("/reload-config", HTTP_GET, reloadConfigRequestHandler);
   server.on("/config", HTTP_GET, getConfigRequestHandler);
   server.on("/config", HTTP_PUT, putConfigRequestHandler);

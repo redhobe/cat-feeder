@@ -1,5 +1,6 @@
 {
   "isFTPEnabled": "true",
+  "isLEDEnabled": "true",
   "manualPortions": "3",
   "schedule": [
     {
